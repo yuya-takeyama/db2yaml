@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/codegangsta/cli"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/yuya-takeyama/db2yaml/model"
 	"gopkg.in/yaml.v2"
 	"os"
 )
@@ -13,52 +14,6 @@ const (
 	DEFAULT_HOST = "localhost"
 	DEFAULT_PORT = 3306
 )
-
-type Database struct {
-	Tables map[string]*Table
-}
-
-type Table struct {
-	Name    string
-	Columns []*Column
-	Indexes []*Index
-	Comment string
-}
-
-func (t *Table) addColumn(c *Column) {
-	t.Columns = append(t.Columns, c)
-}
-
-func (t *Table) addIndex(i *Index) {
-	t.Indexes = append(t.Indexes, i)
-}
-
-type Column struct {
-	Name          string `yaml:"name"`
-	Type          string `yaml:"type"`
-	Length        int    `yaml:"length,omitempty"`
-	AutoIncrement bool   `yaml:"auto_increment,omitempty"`
-	Nullable      bool   `yaml:"nullable,omitempty"`
-	Default       string `yaml:"default,omitempty"`
-	Comment       string `yaml:"comment,omitempty"`
-}
-
-type Index struct {
-	Name    string
-	Unique  bool
-	Columns []*IndexColumn
-}
-
-func (i *Index) addColumn(name string) {
-	column := &IndexColumn{
-		Name: name,
-	}
-	i.Columns = append(i.Columns, column)
-}
-
-type IndexColumn struct {
-	Name string
-}
 
 func main() {
 	app := cli.NewApp()
@@ -143,9 +98,9 @@ func generateYaml(conn *sql.DB, databaseName string) ([]byte, error) {
 	return yaml.Marshal(&database.Tables)
 }
 
-func loadDatabaseStructure(conn *sql.DB, databaseName string) (*Database, error) {
-	database := &Database{
-		Tables: make(map[string]*Table),
+func loadDatabaseStructure(conn *sql.DB, databaseName string) (*model.Database, error) {
+	database := &model.Database{
+		Tables: make(map[string]*model.Table),
 	}
 
 	err := loadTables(conn, databaseName, database)
@@ -166,7 +121,7 @@ func loadDatabaseStructure(conn *sql.DB, databaseName string) (*Database, error)
 	return database, nil
 }
 
-func loadTables(conn *sql.DB, databaseName string, database *Database) error {
+func loadTables(conn *sql.DB, databaseName string, database *model.Database) error {
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `TABLE_COMMENT` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = ?")
 
 	if err != nil {
@@ -191,7 +146,7 @@ func loadTables(conn *sql.DB, databaseName string, database *Database) error {
 			return err
 		}
 
-		database.Tables[tableName] = &Table{
+		database.Tables[tableName] = &model.Table{
 			Name:    tableName,
 			Comment: tableComment,
 		}
@@ -200,7 +155,7 @@ func loadTables(conn *sql.DB, databaseName string, database *Database) error {
 	return nil
 }
 
-func loadColumns(conn *sql.DB, databaseName string, database *Database) error {
+func loadColumns(conn *sql.DB, databaseName string, database *model.Database) error {
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `COLUMN_NAME`, `IS_NULLABLE`, `DATA_TYPE`, `CHARACTER_MAXIMUM_LENGTH`, `COLUMN_DEFAULT`, `COLUMN_COMMENT`, `EXTRA` FROM `information_schema`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? ORDER BY `TABLE_NAME`, `ORDINAL_POSITION`")
 	if err != nil {
 		return err
@@ -239,7 +194,7 @@ func loadColumns(conn *sql.DB, databaseName string, database *Database) error {
 			autoIncrement = false
 		}
 
-		column := &Column{
+		column := &model.Column{
 			Name:          columnName,
 			Type:          dataType,
 			Length:        int(length.Int64),
@@ -251,13 +206,13 @@ func loadColumns(conn *sql.DB, databaseName string, database *Database) error {
 
 		table := database.Tables[tableName]
 
-		table.addColumn(column)
+		table.AddColumn(column)
 	}
 
 	return nil
 }
 
-func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
+func loadIndexes(conn *sql.DB, databaseName string, database *model.Database) error {
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `INDEX_NAME`, `NON_UNIQUE`, `COLUMN_NAME` FROM `information_schema`.`STATISTICS` WHERE `INDEX_SCHEMA` = ? ORDER BY `TABLE_NAME`, `NON_UNIQUE`, `INDEX_NAME` != 'PRIMARY', `INDEX_NAME`, `SEQ_IN_INDEX`")
 
 	if err != nil {
@@ -272,7 +227,7 @@ func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
 
 	prevTableName := ""
 	prevIndexName := ""
-	index := new(Index)
+	index := new(model.Index)
 
 	for rows.Next() {
 		var tableName string
@@ -296,18 +251,18 @@ func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
 				unique = false
 			}
 
-			index = &Index{
+			index = &model.Index{
 				Name:    indexName,
 				Unique:  unique,
-				Columns: make([]*IndexColumn, 0),
+				Columns: make([]*model.IndexColumn, 0),
 			}
 
 			table := database.Tables[tableName]
 
-			table.addIndex(index)
+			table.AddIndex(index)
 		}
 
-		index.addColumn(columnName)
+		index.AddColumn(columnName)
 
 		prevTableName = tableName
 		prevIndexName = indexName
