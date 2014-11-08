@@ -121,23 +121,10 @@ OPTIONS:
 
 		databaseName := c.String("database")
 
-		database := &Database{
-			Tables: make(map[string]*Table),
-		}
-
-		err = loadTables(conn, databaseName, database)
+		yaml, err := generateYaml(conn, databaseName)
 		panicIf(err)
 
-		err = loadColumns(conn, databaseName, database)
-		panicIf(err)
-
-		err = loadIndexes(conn, databaseName, database)
-		panicIf(err)
-
-		out, err := yaml.Marshal(&database.Tables)
-		panicIf(err)
-
-		print(string(out))
+		fmt.Print(string(yaml))
 	}
 	app.Run(os.Args)
 }
@@ -145,6 +132,38 @@ OPTIONS:
 func getDsn(c *cli.Context) string {
 	dest := fmt.Sprintf("tcp(%s:%d)", c.String("host"), c.Int("port"))
 	return fmt.Sprintf("%s:%s@%s/%s?charset=utf8", c.String("user"), c.String("password"), dest, c.String("database"))
+}
+
+func generateYaml(conn *sql.DB, databaseName string) ([]byte, error) {
+	database, err := loadDatabaseStructure(conn, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	return yaml.Marshal(&database.Tables)
+}
+
+func loadDatabaseStructure(conn *sql.DB, databaseName string) (*Database, error) {
+	database := &Database{
+		Tables: make(map[string]*Table),
+	}
+
+	err := loadTables(conn, databaseName, database)
+	if err != nil {
+		return nil, err
+	}
+
+	err = loadColumns(conn, databaseName, database)
+	if err != nil {
+		return nil, err
+	}
+
+	err = loadIndexes(conn, databaseName, database)
+	if err != nil {
+		return nil, err
+	}
+
+	return database, nil
 }
 
 func loadTables(conn *sql.DB, databaseName string, database *Database) error {
@@ -183,10 +202,14 @@ func loadTables(conn *sql.DB, databaseName string, database *Database) error {
 
 func loadColumns(conn *sql.DB, databaseName string, database *Database) error {
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `COLUMN_NAME`, `IS_NULLABLE`, `DATA_TYPE`, `CHARACTER_MAXIMUM_LENGTH`, `COLUMN_DEFAULT`, `COLUMN_COMMENT`, `EXTRA` FROM `information_schema`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? ORDER BY `TABLE_NAME`, `ORDINAL_POSITION`")
-	panicIf(err)
+	if err != nil {
+		return err
+	}
 
 	rows, err := stmt.Query(databaseName)
-	panicIf(err)
+	if err != nil {
+		return err
+	}
 
 	for rows.Next() {
 		var tableName string
@@ -247,6 +270,7 @@ func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
 		return err
 	}
 
+	prevTableName := ""
 	prevIndexName := ""
 	index := new(Index)
 
@@ -265,7 +289,7 @@ func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
 
 		defer rows.Close()
 
-		if prevIndexName != indexName {
+		if !(prevTableName == tableName && prevIndexName == indexName) {
 			if nonUnique == 0 {
 				unique = true
 			} else {
@@ -285,6 +309,7 @@ func loadIndexes(conn *sql.DB, databaseName string, database *Database) error {
 
 		index.addColumn(columnName)
 
+		prevTableName = tableName
 		prevIndexName = indexName
 	}
 
