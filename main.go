@@ -79,7 +79,7 @@ OPTIONS:
 		yaml, err := generateYaml(conn, databaseName)
 		panicIf(err)
 
-		fmt.Print(string(yaml))
+		os.Stdout.Write(yaml)
 	}
 	app.Run(os.Args)
 }
