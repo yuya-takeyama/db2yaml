@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	MYSQL_DATABASE = os.Getenv("DB2YAML_MYSQL_DATABASE")
+	MysqlDatabase = os.Getenv("DB2YAML_MYSQL_DATABASE")
 )
 
 func TestEmptyDatabase(t *testing.T) {
@@ -18,7 +18,7 @@ func TestEmptyDatabase(t *testing.T) {
 		t.Fatalf("Failed to connect: %s", err)
 	}
 
-	yaml, err := generateYaml(conn, MYSQL_DATABASE)
+	yaml, err := generateYaml(conn, MysqlDatabase)
 
 	if string(yaml) != "{}\n" {
 		t.Fatal("not matched")
@@ -41,7 +41,7 @@ func TestSingleTable(t *testing.T) {
 		t.Fatalf("failed to create table: %s", err)
 	}
 
-	yaml, err := generateYaml(conn, MYSQL_DATABASE)
+	yaml, err := generateYaml(conn, MysqlDatabase)
 
 	expected :=
 		`users:
@@ -90,7 +90,7 @@ func TestRegressionGitHubIssues1(t *testing.T) {
 		t.Fatalf("failed to create table: %s", err)
 	}
 
-	yaml, err := generateYaml(conn, MYSQL_DATABASE)
+	yaml, err := generateYaml(conn, MysqlDatabase)
 
 	expected :=
 		`users:
@@ -134,17 +134,17 @@ func setupDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", MYSQL_DATABASE))
+	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", MysqlDatabase))
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", MYSQL_DATABASE))
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", MysqlDatabase))
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.Exec(fmt.Sprintf("USE `%s`", MYSQL_DATABASE))
+	_, err = db.Exec(fmt.Sprintf("USE `%s`", MysqlDatabase))
 	if err != nil {
 		return nil, err
 	}
