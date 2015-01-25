@@ -8,6 +8,7 @@ import (
 	"github.com/yuya-takeyama/db2yaml/model"
 	"gopkg.in/yaml.v2"
 	"os"
+	"regexp"
 )
 
 const (
@@ -146,13 +147,27 @@ func loadTables(conn *sql.DB, databaseName string, database *model.Database) err
 			return err
 		}
 
+		var tbl string
+		var ddl string
+
+		err = conn.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`", tableName)).Scan(&tbl, &ddl)
+		if err != nil {
+			return err
+		}
+
 		database.Tables[tableName] = &model.Table{
 			Name:    tableName,
 			Comment: tableComment,
+			DDL:     removeAutoIncrement(ddl),
 		}
 	}
 
 	return nil
+}
+
+func removeAutoIncrement(ddl string) string {
+	autoIncrementRegexp := regexp.MustCompile(`AUTO_INCREMENT=\d+ `)
+	return autoIncrementRegexp.ReplaceAllString(ddl, "")
 }
 
 func loadColumns(conn *sql.DB, databaseName string, database *model.Database) error {

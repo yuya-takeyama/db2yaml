@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -34,8 +35,8 @@ func TestSingleTable(t *testing.T) {
 	_, err = conn.Exec(`
 		CREATE TABLE users (
 		  id int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'User ID',
-		  PRIMARY  KEY (id)
-		) COMMENT = 'Users table'
+		  PRIMARY KEY (id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Users table'
 	`)
 	if err != nil {
 		t.Fatalf("failed to create table: %s", err)
@@ -57,11 +58,14 @@ func TestSingleTable(t *testing.T) {
     columns:
     - name: id
   comment: Users table
+  ddl: |-
+    CREATE TABLE ` + "`users`" + ` (
+      ` + "`id`" + ` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'User ID',
+      PRIMARY KEY (` + "`id`" + `)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Users table'
 `
 
-	if string(yaml) != expected {
-		t.Fatal("not matched")
-	}
+	assert.Equal(t, string(yaml), expected)
 }
 
 func TestRegressionGitHubIssues1(t *testing.T) {
@@ -106,6 +110,11 @@ func TestRegressionGitHubIssues1(t *testing.T) {
     columns:
     - name: id
   comment: Users table
+  ddl: |-
+    CREATE TABLE ` + "`users`" + ` (
+      ` + "`id`" + ` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'User ID',
+      PRIMARY KEY (` + "`id`" + `)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Users table'
 users2:
   name: users2
   columns:
@@ -119,16 +128,19 @@ users2:
     columns:
     - name: id
   comment: Users table 2
+  ddl: |-
+    CREATE TABLE ` + "`users2`" + ` (
+      ` + "`id`" + ` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'User ID',
+      PRIMARY KEY (` + "`id`" + `)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Users table 2'
 `
 
-	if string(yaml) != expected {
-		t.Fatal("not matched")
-	}
+	assert.Equal(t, string(yaml), expected)
 }
 
 func setupDB() (*sql.DB, error) {
 	dest := fmt.Sprintf("tcp(%s:%s)", os.Getenv("DB2YAML_MYSQL_HOST"), os.Getenv("DB2YAML_MYSQL_PORT"))
-	dsn := fmt.Sprintf("%s:%s@%s/?charset=utf8", os.Getenv("DB2YAML_MYSQL_USERNAME"), os.Getenv("DB2YAML_MYSQL_PASSWORD"), dest)
+	dsn := fmt.Sprintf("%s:%s@%s/%s?charset=utf8", os.Getenv("DB2YAML_MYSQL_USERNAME"), os.Getenv("DB2YAML_MYSQL_PASSWORD"), dest, MysqlDatabase)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err

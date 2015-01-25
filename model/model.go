@@ -9,6 +9,7 @@ type Table struct {
 	Columns []*Column
 	Indexes []*Index
 	Comment string
+	DDL     string
 }
 
 func (t *Table) AddColumn(c *Column) {
