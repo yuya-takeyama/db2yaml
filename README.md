@@ -49,6 +49,18 @@ pictures:
     columns:
     - name: user_id
   comment: Uploaded pictures
+  ddl: |-
+    CREATE TABLE `pictures` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `hash` varchar(32) COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT 'MD5 hash identifies picture',
+      `user_id` varchar(32) COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT 'User ID',
+      `body` mediumblob NOT NULL COMMENT 'Picture data (PNG)',
+      `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+      `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `hash` (`hash`),
+      KEY `user_id` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='Uploaded pictures'
 posts:
   name: posts
   columns:
@@ -77,6 +89,15 @@ posts:
     columns:
     - name: id
   comment: Posts on board
+  ddl: |-
+    CREATE TABLE `posts` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `title` varchar(64) DEFAULT NULL COMMENT 'Title of post',
+      `body` text COMMENT 'Body of post',
+      `created_at` datetime DEFAULT NULL,
+      `updated_at` datetime DEFAULT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Posts on board'
 ```
 
 ## Author
