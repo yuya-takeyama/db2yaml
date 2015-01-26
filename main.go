@@ -93,7 +93,7 @@ func getDsn(c *cli.Context) string {
 func generateYaml(conn *sql.DB, databaseName string) ([]byte, error) {
 	database, err := loadDatabaseStructure(conn, databaseName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load data structure: %s", err)
 	}
 
 	return yaml.Marshal(&database.Tables)
@@ -106,17 +106,17 @@ func loadDatabaseStructure(conn *sql.DB, databaseName string) (*model.Database, 
 
 	err := loadTables(conn, databaseName, database)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load tables: %s", err)
 	}
 
 	err = loadColumns(conn, databaseName, database)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load columns", err)
 	}
 
 	err = loadIndexes(conn, databaseName, database)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load indexes", err)
 	}
 
 	return database, nil
@@ -126,13 +126,13 @@ func loadTables(conn *sql.DB, databaseName string, database *model.Database) err
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `TABLE_COMMENT` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = ?")
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare statement to read table informations: %s", err)
 	}
 
 	rows, err := stmt.Query(databaseName)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute query to read table informations: %s", err)
 	}
 
 	defer rows.Close()
@@ -142,9 +142,8 @@ func loadTables(conn *sql.DB, databaseName string, database *model.Database) err
 		var tableComment string
 
 		err = rows.Scan(&tableName, &tableComment)
-
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to scan table information: %s", err)
 		}
 
 		var tbl string
@@ -152,7 +151,7 @@ func loadTables(conn *sql.DB, databaseName string, database *model.Database) err
 
 		err = conn.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`", tableName)).Scan(&tbl, &ddl)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read DDL: %s", err)
 		}
 
 		database.Tables[tableName] = &model.Table{
@@ -173,12 +172,12 @@ func removeAutoIncrement(ddl string) string {
 func loadColumns(conn *sql.DB, databaseName string, database *model.Database) error {
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `COLUMN_NAME`, `IS_NULLABLE`, `DATA_TYPE`, `CHARACTER_MAXIMUM_LENGTH`, `COLUMN_DEFAULT`, `COLUMN_COMMENT`, `EXTRA` FROM `information_schema`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? ORDER BY `TABLE_NAME`, `ORDINAL_POSITION`")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed prepare statement to read column informations", err)
 	}
 
 	rows, err := stmt.Query(databaseName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute query to read column informations", err)
 	}
 
 	for rows.Next() {
@@ -231,13 +230,13 @@ func loadIndexes(conn *sql.DB, databaseName string, database *model.Database) er
 	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `INDEX_NAME`, `NON_UNIQUE`, `COLUMN_NAME` FROM `information_schema`.`STATISTICS` WHERE `INDEX_SCHEMA` = ? ORDER BY `TABLE_NAME`, `NON_UNIQUE`, `INDEX_NAME` != 'PRIMARY', `INDEX_NAME`, `SEQ_IN_INDEX`")
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare statement to read index informations", err)
 	}
 
 	rows, err := stmt.Query(databaseName)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute query to read index informations", err)
 	}
 
 	prevTableName := ""
@@ -254,7 +253,7 @@ func loadIndexes(conn *sql.DB, databaseName string, database *model.Database) er
 		err = rows.Scan(&tableName, &indexName, &nonUnique, &columnName)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to scan index information", err)
 		}
 
 		defer rows.Close()
