@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	DefaultHost = "localhost"
-	DefaultPort = 3306
+	defaultHost = "localhost"
+	defaultPort = 3306
 )
 
 func main() {
@@ -48,12 +48,12 @@ OPTIONS:
 		},
 		cli.StringFlag{
 			Name:  "host, h",
-			Value: DefaultHost,
+			Value: defaultHost,
 			Usage: "MySQL server host name",
 		},
 		cli.IntFlag{
 			Name:  "port, P",
-			Value: DefaultPort,
+			Value: defaultPort,
 			Usage: "MySQL server port number",
 		},
 		cli.StringFlag{
