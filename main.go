@@ -123,7 +123,7 @@ func loadDatabaseStructure(conn *sql.DB, databaseName string) (*model.Database, 
 }
 
 func loadTables(conn *sql.DB, databaseName string, database *model.Database) error {
-	stmt, err := conn.Prepare("SELECT `TABLE_NAME`, `TABLE_COMMENT` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = ?")
+	stmt, err := conn.Prepare("SELECT `TABLES`.`TABLE_NAME`, `TABLES`.`TABLE_COMMENT` FROM `information_schema`.`TABLES` LEFT JOIN `information_schema`.`VIEWS` ON `TABLES`.`TABLE_SCHEMA` = `VIEWS`.`TABLE_SCHEMA` AND `TABLES`.`TABLE_NAME` = `VIEWS`.`TABLE_NAME` WHERE `TABLES`.`TABLE_SCHEMA` = ? AND `VIEWS`.`TABLE_NAME` IS NULL")
 
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement to read table informations: %s", err)
@@ -220,7 +220,9 @@ func loadColumns(conn *sql.DB, databaseName string, database *model.Database) er
 
 		table := database.Tables[tableName]
 
-		table.AddColumn(column)
+		if table != nil {
+			table.AddColumn(column)
+		}
 	}
 
 	return nil
