@@ -3,12 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"regexp"
+
 	"github.com/codegangsta/cli"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/yuya-takeyama/db2yaml/model"
 	"gopkg.in/yaml.v2"
-	"os"
-	"regexp"
 )
 
 const (
@@ -82,6 +83,7 @@ OPTIONS:
 
 		os.Stdout.Write(yaml)
 	}
+	app.Version = Version
 	app.Run(os.Args)
 }
 
